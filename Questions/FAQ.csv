@@ -1,0 +1,7 @@
+Does Agile work for distributed teams?	Absolutely. We have many customers who are very happy and successful with their distributed teams.	CA Agile Central
+What is the right size for stories?	Stories should be the right size for their purpose. If you are planning an iteration, you need to ensure your stories are small enough to be completed in an iteration.	CA Agile Central
+Are Agile and DevOps same?	No, agile is not same as DevOps. However, agile can be used as a part of DevOps.	DevOps
+Do I need Admin privileges to install TortoiseSVN?	Yes, you need to have Admin privileges to install TortoiseSVN, or at least have the rights to install with Admin privileges.	SVN
+Do I need to install Subversion before I can use TortoiseSVN?	No. TortoiseSVN comes with everything you need to access a repository. Only if you want to set up a server then you will need the Subversion package.	SVN
+What is Fork a repo	A fork is a copy of a repository. Forking a repository allows you to freely experiment with changes without affecting the original project.	GitHub
+What are the Supported browsers for GitHub	We design GitHub to support the latest web browsers. We support the current versions of Chrome, Firefox, Safari, and Microsoft Edge.	GitHub
