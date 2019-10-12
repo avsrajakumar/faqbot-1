@@ -13,7 +13,7 @@ def perf_noise_cancelling(content):
         if word not in stopwords.words('english') and word.isalpha():
             without_stopwords.append(word)
 
-    print("Without stop words: ", without_stopwords)
+    return without_stopwords
 
 
 def main():
