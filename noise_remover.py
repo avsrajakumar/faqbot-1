@@ -1,10 +1,11 @@
 import nltk
-
 nltk.download("stopwords")
+
 from nltk.corpus import stopwords
+from file_reader import read_file
 
 # read file
-file = open("./resources/titanic.txt", "r")
+file = read_file("./resources/titanic.txt", "r")
 content = file.read()
 print("Content: ", content)
 
