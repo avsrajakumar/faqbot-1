@@ -1,0 +1,516 @@
+How do I check out the Subversion code?
+Use the Subversion client:
+
+	$ svn co https://svn.apache.org/repos/asf/subversion/trunk subversion
+That will check out a copy of the Subversion source tree into a directory named subversion on your local machine.
+
+How do I create a repository? How do I import data into it?
+See Quick Start. For some more detail, see the quick start instructions in The Subversion Book.
+
+For even more detail about repository setup and administration, read chapter 5 in The Subversion Book.
+
+How do I convert an existing CVS repository into a Subversion repository?
+Try the cvs2svn conversion tool, from http://cvs2svn.tigris.org/ (see also its feature list and documentation). cvs2svn seems to be what most people use, but if for some reason it doesn't meet your needs, there are at least two other tools you could try:
+
+One based on VCP written by Chia-liang Kao can be found on CPAN.
+refinecvs written by Lev Serebryakov is at http://lev.serebryakov.spb.ru/refinecvs/.
+What if I'm behind a proxy?
+The Subversion client can go through a proxy, if you configure it to do so. First, edit your "servers" configuration file to indicate which proxy to use. The files location depends on your operating system. On Linux or Unix it is located in the directory "~/.subversion". On Windows it is in "%APPDATA%\Subversion". (Try "echo %APPDATA%", note this is a hidden directory.)
+
+There are comments in the file explaining what to do. If you don't have that file, get the latest Subversion client and run any command; this will cause the configuration directory and template files to be created.
+
+Next, you need to make sure the proxy server itself supports all the HTTP methods Subversion uses. Some proxy servers do not support these methods by default: PROPFIND, REPORT, MERGE, MKACTIVITY, CHECKOUT. In general, solving this depends on the particular proxy software. For Squid, the config option is
+
+   #  TAG: extension_methods
+   #       Squid only knows about standardized HTTP request methods.
+   #       You can add up to 20 additional "extension" methods here.
+   #
+   #Default:
+   # none
+   extension_methods REPORT MERGE MKACTIVITY CHECKOUT
+(Squid 2.4 and later already knows about PROPFIND.)
+
+See also "What are all the HTTP methods Subversion uses?" for advice on additional HTTP methods to allow through your proxy.
+
+If it's difficult or impossible to get the proxy to allow Subversion traffic, but you want to check out the Subversion sources, you may be able to go around the proxy. Some proxies that filter port 80 nevertheless allow anything on port 81. In many other cases proxies don't filter https as strict as they filter http. The svn.apache.org repository server listens on https as well as http. Try:
+
+   svn checkout https://svn.apache.org/repos/asf/subversion/trunk subversion
+and maybe the proxy will let you through.
+
+Of course, your svn client will have to have been built with ssl support. You can check to see whether the 'https' scheme is supported by running svn --version.
+
+My admins don't want me to have a HTTP server for Subversion. What can I do if I still want remote usage?
+A simple option is to use the svnserve server instead of Apache. See chapter 6 in the Subversion book for details.
+
+However, if your admins don't want you to run Apache, it's very likely they don't want you to run a custom server process on port 3690 either! So the rest of this answer assumes that your admins are okay with you using an existing SSH infrastructure.
+
+If you previously used CVS, you may have used SSH to login to the CVS server. The ra_svn Subversion access method is the equivalent way of doing this with Subversion. Just use the "svn+ssh" prefix to your Subversion repository URL.
+
+$ svn checkout svn+ssh://your.domain.com/full/path/to/repository
+This makes your SSH program launch a private 'svnserve' process on the remote box, which accesses the repository as your UID and tunnels the information back over the encrypted link.
+
+However, another solution that can be used instead is to leverage SSH port forwarding to connect to the protected server via ra_dav. You would connect via SSH to a machine behind your firewall that can access your Subversion server. Note that this SSH server does not have to be the same as where Subversion is installed. It can be, but it doesn't have to be.
+
+Then, you create a local port forward that connects to the HTTP server that houses your Subversion repository. You would then 'connect' to the Subversion repository via this local port. Then, the request will be sent 'tunneled' via SSH server to your Subversion server.
+
+An example: a Subversion ra_dav setup is behind your company firewall at 10.1.1.50 (call it svn-server.example.com). Your company allows SSH access via publicly accessible ssh-server.example.com. Internally, you can access the Subversion repository via http://svn-server.example.com/repos/ours.
+
+Example: client connecting to ssh-server with port-forwarding and checking out via the port forward
+
+% ssh -L 8888:svn-server.example.com:80 me@ssh-server.example.com
+% svn checkout http://localhost:8888/repos/ours
+Note that your svn-server.example.com could also have its httpd instance running on an unprivileged port by a non-trusted user. This will allow your Subversion server not to require root access.
+
+Joe Orton notes
+
+The server is sensitive to the hostname used in the Destination header
+in MOVE and COPY requests, so you have to be a little careful here - a
+"ServerAlias localhost" may be required to get this working properly.
+Some links on SSH port forwarding
+
+http://www.onlamp.com/pub/a/onlamp/excerpt/ssh_11/index3.html
+https://engineering.purdue.edu/ECN/Support/KB/Docs/SSHIntroductionToSSH
+How do I manage several different projects under Subversion?
+It depends upon the projects involved. If the projects are related, and are likely to share data, then it's best to create one repository with several subdirectories like this:
+
+	$ svnadmin create /repo/svn
+	$ svn mkdir file:///repo/svn/projA
+	$ svn mkdir file:///repo/svn/projB
+	$ svn mkdir file:///repo/svn/projC
+If the projects are completely unrelated, and not likely to share data between them, then it's probably best to create separate and unrelated repositories.
+
+	$ mkdir /repo/svn
+	$ svnadmin create /repo/svn/projA
+	$ svnadmin create /repo/svn/projB
+	$ svnadmin create /repo/svn/projC
+The difference between these two approaches is this (as explained by Ben Collins-Sussman <sussman@collab.net>):
+
+In the first case, code can easily be copied or moved around between projects, and the history is preserved. ('svn cp/mv' currently only works within a single repository.)
+Because revision numbers are repository-wide, a commit to any project in the first case causes a global revision bump. So it might seem a bit odd if somebody has 'projB' checked out, notices that 10 revisions have happened, but projB hasn't changed at all. Not a big deal, really. Just a little weird at first. This used to happen to svn everytime people committed to rapidsvn, when rapidsvn was in the same repository. :-)
+The second case might be easier to secure; it's easier to insulate projects from each other (in terms of users and permissions) using Apache's access control. In the 1st case, you'll need a fancy hook script in the repository that distinguishes projects ("is this user allowed to commit to this particular subdir?") Of course, we already have such a script, ready for you to use.
+How do I merge two completely separate repositories?
+If you don't care about retaining all the history of one of the repositories, you can just create a new directory under one project's repository, then import the other.
+
+If you care about retaining the history of both, then you can use 'svnadmin dump' to dump one repository, and 'svnadmin load' to load it into the other repository. The revision numbers will be off, but you'll still have the history.
+
+Peter Davis <peter@pdavis.cx> also explains a method using svn's equivalent to CVS modules:
+
+As long as the merging takes place in separate directory trees, you can use svn's version of CVS modules.
+
+Set the svn:externals property on a directory to checkout directories from other repositories whenever the original directory is checked out. The repository remains separate, but in the working copy it appears that they have been merged. If you commit to the imported directory, it will affect the external repository.
+
+The merge isn't completely clean: the import only affects working copies, so you won't be able to use a URL in the first repository to access modules imported from the second. They remain separate URLs.
+
+There are also some helpful tools floating around on the internet, to select and reorder revisions when merging several repositories. For instance the svn-merge-repos.pl perl script for basic operations and the SvnDumpTool python classes for advanced reorganisations.
+
+Should I store my repository / working copy on a NFS server?
+If you are using the FSFS repository back end (which has been the default since Subversion 1.2), then storing the repository on a modern NFS server (i.e., one that supports locking) should be fine.
+
+If you are using a repository with the Berkeley DB back end (default for repositories created with Subversion 1.0 and 1.1, not the default thereafter), we recommend not storing the repository on a remote filesystem (for example, NFS). While Berkeley DB databases and log files can be stored on remote filesystems, the Berkeley DB shared region files cannot be stored on a remote filesystem, so the repository may be safely accessed by only a single filesystem client, and not all Subversion functionality will be available to even that one client.
+
+Working copies can be stored on NFS (one common scenario is when your home directory is on a NFS server). On Linux NFS servers, due to the volume of renames used internally in Subversion when checking out files, some users have reported that 'subtree checking' should be disabled (it's enabled by default). Please see NFS Howto Server Guide and exports(5) for more information on how to disable subtree checking.
+
+We've had at least one report of working copies getting wedged after being accessed via SMB. The server in question was running a rather old version of Samba (2.2.7a). The problem didn't recur with a newer Samba (3.0.6).
+
+How do I set repository permissions correctly?
+Try to have as few users access the repository as possible. For example, run apache or 'svnserve -d' as a specific user, and make the repository wholly owned by that user. Don't allow any other users to access the repository via file:/// urls, and be sure to run 'svnlook' and 'svnadmin' only as the user which owns the repository.
+
+If your clients are accessing via file:/// or svn+ssh://, then there's no way to avoid access by multiple users. In that case, read the last section in chapter 6, and pay particular attention to the "checklist" sidebar at the bottom. It outlines a number of steps to make this scenario safer.
+
+Note for SELinux / Fedora Core 3+ / Red Hat Enterprise users:
+In addition to regular Unix permissions, under SELinux every file, directory, process, etc. has a 'security context'. When a process attempts to access a file, besides checking the Unix permissions the system also checks to see if the security context of the process is compatible with the security context of the file.
+
+Fedora Core 3, among other systems, comes with SELinux installed by default, configured so that Apache runs in a fairly restricted security context. To run Subversion under Apache, you have to set the security context of the repository to allow Apache access (or turn off the restrictions on Apache, if you think all this is overkill). The chcon command is used to set the security context of files (similarly to how the chmod sets the traditional Unix permissions). For example, one user had to issue this command
+
+   $ chcon -R -h -t httpd_sys_content_t PATH_TO_REPOSITORY
+to set the security context to be able to successfully access the repository.
+
+How do I completely remove a file from the repository's history?
+There are special cases where you might want to destroy all evidence of a file or commit. (Perhaps somebody accidentally committed a confidential document.) This isn't so easy, because Subversion is deliberately designed to never lose information. Revisions are immutable trees which build upon one another. Removing a revision from history would cause a domino effect, creating chaos in all subsequent revisions and possibly invalidating all working copies.
+
+The project has plans, however, to someday implement an svnadmin obliterate command which would accomplish the task of permanently deleting information. (See issue 516.)
+
+In the meantime, your only recourse is to svnadmin dump your repository, then pipe the dumpfile through svndumpfilter (excluding the bad path) into an svnadmin load command. See chapter 5 of the Subversion book for details about this.
+
+An alternative approach is to replicate the repository with svnsync after configuring path-based authorization rules that deny read access to any paths that need to be filtered from history. Unlike svndumpfilter, svnsync will automatically translate copy operations with an unreadable source path into normal additions, which is useful if history involving copy operations needs to be filtered.
+
+How do I change the log message for a revision after it's been committed?
+Log messages are kept in the repository as properties attached to each revision. By default, the log message property (svn:log) cannot be edited once it is committed. That is because changes to revision properties (of which svn:log is one) cause the property's previous value to be permanently discarded, and Subversion tries to prevent you from doing this accidentally. However, there are a couple of ways to get Subversion to change a revision property.
+
+The first way is for the repository administrator to enable revision property modifications. This is done by creating a hook called "pre-revprop-change" (see this section in the Subversion book for more details about how to do this). The "pre-revprop-change" hook has access to the old log message before it is changed, so it can preserve it in some way (for example, by sending an email). Once revision property modifications are enabled, you can change a revision's log message by passing the --revprop switch to svn propedit or svn propset, like either one of these:
+
+$ svn propedit -r N --revprop svn:log URL
+$ svn propset -r N --revprop svn:log "new log message" URL
+where N is the revision number whose log message you wish to change, and URL is the location of the repository. If you run this command from within a working copy, you can leave off the URL.
+
+The second way of changing a log message is to use svnadmin setlog. This must be done by referring to the repository's location on the filesystem. You cannot modify a remote repository using this command.
+
+$ svnadmin setlog REPOS_PATH -r N FILE
+where REPOS_PATH is the repository location, N is the revision number whose log message you wish to change, and FILE is a file containing the new log message. If the "pre-revprop-change" hook is not in place (or you want to bypass the hook script for some reason), you can also use the --bypass-hooks option. However, if you decide to use this option, be very careful. You may be bypassing such things as email notifications of the change, or backup systems that keep track of revision properties.
+
+How do I submit a patch for Subversion?
+FIRST, read the Subversion Community Guide.
+
+Once you've digested that, send a mail to the dev list with the word [PATCH] and a one-line description in the subject, and include the patch inline in your mail (unless your MUA munges it up totally). Then a committer will pick it up, apply it (making any formatting or content changes necessary), and check it in.
+
+The basic process looks like this:
+
+	$ svn co https://svn.apache.org/repos/asf/subversion/site subversion-site
+	$ cd subversion-site/publish
+
+		[ make changes to faq.html ]
+	
+	$ svn diff faq.html > /tmp/foo
+
+	$ Mail -s "[PATCH] FAQ updates" < /tmp/foo
+Of course, the email you send should contain a nice long explanation about what the patch does, as per the Subversion Community Guide, but you already know that, since you read and completely understood it before actually hacking the code, right? :)
+
+Looking for something to do? Take a look at our ideas page.
+
+How can I do an in-place 'import' (i.e. add a tree to Subversion such that the original data becomes a working copy directly)?
+Suppose, for example, that you wanted to put some of /etc under version control inside your repository:
+
+     # svn mkdir file:///root/svn-repository/etc \
+         -m "Make a directory in the repository to correspond to /etc"
+     # cd /etc
+     # svn checkout file:///root/svn-repository/etc ./
+     # svn add apache samba alsa X11 
+     # svn commit -m "Initial version of my config files"
+This takes advantage of a not-immediately-obvious feature of svn checkout: you can check out a directory from the repository directly into an existing directory. Here, we first make a new empty directory in the repository, and then check it out into /etc, transforming /etc into a working copy. Once that is done, you can use normal svn add commands to select files and subtrees to add to the repository.
+
+If the entire contents of the directory shall be imported, rather than a subset of contents, this shorter sequence of commands can be used to perform the import and then transform the directory into a Subversion working copy:
+
+     # cd /etc
+     # svn import file:///root/svn-repository/etc
+     # svn checkout --force file:///root/svn-repository/etc .
+There is an issue filed for enhancing svn import to be able to convert the imported tree to a working copy automatically; see issue 1328.
+
+What is this "dump/load cycle" people sometimes talk about when upgrading a Subversion server?
+Subversion's repository database schema has changed occasionally during development. To take advantage of new features, you may have to dump and load the repository to recreate the back-end database. However, most upgrades of Subversion do not involve a dump and load. When one is required, the release notes and the CHANGES file for the new version will carry prominent notices about it. If you don't see such a notice, then there has been no schema change, and no dump/load is necessary.
+
+An alternative to dump/load is using svnsync to replicate the repository into a new one. This is a bit slower, but is more flexible, and has some extra normalization-features which are not (yet) available with dump/load (svnsync normalizes properties to LF line-endings on the fly and has a --source-prop-encoding option to convert them to UTF-8, which is required in newer repository formats --- see below for how to handle this with dump/load).
+
+Note: Both dump/load and svnsync only cover the repository database, not the repository hook scripts, configuration files and locks. These need to be copied over manually from source to target (see below in the "complex procedure"). If you need to copy the complete repository, without rebuilding the back-end database, svnadmin hotcopy may be a better option.
+
+For small repositories that can afford some downtime, this is a simple dump/load procedure to upgrade from Subversion version X to Y ( see below for a more complex procedure with minimal downtime for larger repositories):
+
+Shut down svnserve, Apache, and anything else that might be accessing the repository.
+svnadmin dump /path/to/repository > dumpfile.txt , using version X of svnadmin.
+mv /path/to/repository /path/to/saved-old-repository
+Now upgrade to Subversion Y (i.e., build and install Y, replacing X).
+svnadmin create /path/to/repository, using version Y of svnadmin.
+svnadmin load /path/to/repository < dumpfile.txt , again using version Y of svnadmin.
+Copy over hook scripts, etc, from the old repository to the new one.
+Restart svnserve, Apache, etc.
+For larger repositories, where you want to minimize the maintenance window, a slightly more complex procedure can be used. The trick is to dump+load to a new location, while the old repository is still accessible (for checkouts and commits). After this is done (can take hours, or even days, weeks) you note the last revision which was loaded (or check the revision number with 'svnlook youngest newrepos'), and start another dump+load where you dump with '--incremental -rNEXTREV:HEAD' (where NEXTREV is the next revision that needs to be dumped). You can iterate over this as long as you keep the old repository open ... At the end you make the original repository inaccessible for a couple of minutes, while you enable the new one (Caveat: if you move your new repos in the same disk location as the old one, and you use Apache httpd to serve it, make sure you restart httpd to reset its caches).
+
+Tip: for a large repo I strongly suggest building the new repository (the target of your 'svnadmin load') on very fast storage, even ramdisk if possible, and running 'svnadmin pack' while on fast storage (and copy it over to the final disk afterwards). It's the 'svnadmin load' part that is very time-consuming right now (this will probably be much improved in svn 1.10, with the --no-flush-to-disk option for 'svnadmin load').
+
+Your commands will look like the following:
+
+svnadmin create NEWREPOS
+(maybe create it on a ramdisk)
+If you have custom hook scripts in OLDREPOS/hooks (all files not ending in .tmpl, as those are the default templates), review them, and copy them over to NEWREPOS/hooks. Check the new templates corresponding to your custom hook scripts to see if there are new options and comments (you might want to copy the newer comments from the template into your custom hook script, to keep it up to date). Make sure the files are not changed anymore until the end of the entire procedure (or carry over additional changes at the end).
+Review and copy config files from OLDREPOS/conf to NEWREPOS/conf (here too, take a look at the new "default config files" to see if there are new interesting options or comments). Make sure the files are not changed anymore until the end of the entire procedure (or carry over additional changes at the end).
+svnadmin dump -M 1024 OLDREPOS | svnadmin load -M 1024 NEWREPOS
+(initial dump+load; you might want to pass -q to dump and/or load to make it more quiet)
+(the -M 1024 gives the process 1024 MB extra ram for caching)
+svnlook youngest NEWREPOS
+(last revision that was loaded -> NEXTREV is this last revision + 1)
+svnadmin dump --incremental -rNEXTREV:HEAD -M 1024 | svnadmin load -M 1024 NEWRPOS
+Make OLDREPOS read-only or completely unavailable <-- start of maintenance window
+Possibly repeat the incremental dump+load of steps 5 and 6 (if new commits happened after you started 6).
+Copy locks from OLDREPOS/db/locks to NEWREPOS/db/locks. Something like 'cp -rp SOURCE TARGET' works fine for this. Note: this step may take a couple of minutes during your maintenance window, depending on the size of the directory tree and the speed of the disk(s). If you want to make sure, test this in advance (but make sure the source repository is readonly when you do the final copy / sync, otherwise the locks might be changed after your copy).
+Put NEWREPOS online <-- end of maintenance window
+Some things to watch out for:
+
+Watch out for changes to log messages (or other revision properties) after you start the initial dump+load and before you lock down the old repository. Those won't be transferred with the incremental dump+load(s). So either make sure the pre-revprop-change hook is "closed" while you're running the initial dump+load, or keep a log of all changed revision properties (for instance write them to a log file from your post-revprop-change hook) and transfer them to the new repository afterwards (for instance using 'svnlook log' and 'svnadmin setlog').
+You might run into:
+svnadmin: E125005: Invalid property value found in dumpstream; consider repairing the
+source or using --bypass-prop-validation while loading.
+
+svnadmin: E125005: Cannot accept non-LF line endings in 'svn:log' property
+This means the svn:log message of the revision has non-LF line endings (these were accepted by older servers, but no longer as of Subversion 1.6). You can ignore this minor corruption by adding --bypass-prop-validation to your 'svnadmin load' command (you can always repair this later in the new repository). Or you can try to repair this in the source repository before executing the dump+load (since svn:log is a revision property it can easily be fixed without "rewriting history").
+You might run into:
+svnadmin: E125005: Invalid property value found in dumpstream; consider repairing the
+source or using --bypass-prop-validation while loading.
+
+svnadmin: E125005: Cannot accept non-LF line endings in 'svn:ignore' property
+This is more difficult to repair, because 'svn:ignore' is not a revision property (unlike svn:log, which can be manipulated with svnadmin setrevprop), but a versioned property (so it's part of history). Again, you can ignore this with --bypass-prop-validation. But since this is a corruption "in history", this can only be repaired with a dump+load, so this might be a good time to try and fix this (or you'll run into this again in the future). To repair it you can use a tool like svndumptool. But it only works on dump files, not as part of a pipe. So a possible way to go about it is: dump that single (corrupt) revision to a file, repair it ('svndumptool.py eolfix-prop svn:ignore svn.dump svn.dump.repaired'), load that single dumpfile, and then continue with a new "piped" command (like step (6) above).
+See this section of the Subversion book for more details on dumping and loading.
+
+What can I do about "svnadmin: E125005: Cannot accept non-LF line endings in 'svn:log' property" while running 'svnadmin load'?
+This error means the svn:log message of the revision in your dumpfile / dumpstream has non-LF line endings (these were accepted by older servers, but no longer as of Subversion 1.6). You can ignore this minor corruption while loading into your new repository by adding --bypass-prop-validation to your 'svnadmin load' command (you can always repair this later in the new repository). Or you can try to repair this in the source repository before executing the dump+load (since svn:log is a revision property it can easily be fixed without "rewriting history"). Also note that svnsync normalizes this on the fly, so it might be an easier alternative than dump+load.
+
+There is no standard procedure for normalizing the line endings in the svn:log property, but using the administrative commands 'svnlook propget', 'svnlook log' and 'svnadmin setlog' can get you there:
+
+svnlook propget -r$REV --revprop $REPOS svn:log gets the raw svn:log revision property (no normalization, no extra newline at the end). You can use that to validate it and search for 'non-LF line endings'.
+svnlook log -r$REV $REPOS gets a normalized version of it (LF-eols, normalized to UTF8 (if you have the correct "source encoding" set as your locale), and an extra newline at the end). If you strip of the final newline, this gives you a nice normalized version of the log message to feed to ...
+svnadmin setlog -r$REV $REPOS --bypass-hooks (or without the --bypass-hooks option if you want the hooks to be run) will set the value it's reading from stdin as the new log message.
+You can stitch them together into a script to handle all revisions in a repository, like in these bash oneliners:
+
+Find the "broken" revisions and echo the revision numbers:
+
+bash$ YOUNGEST=`svnlook youngest $REPOS`; for (( i=1; i<=$YOUNGEST; i++ )); \
+do svnlook propget -r $i --revprop $REPOS svn:log | xxd -ps -c1 | fgrep '0d' > /dev/null \
+&& echo "$i" ; done; echo "Verified until revision $YOUNGEST"
+Find and immediately fix the "broken" revisions with 'svnadmin setlog':
+
+bash$ YOUNGEST=`svnlook youngest $REPOS`; for (( i=1; i<=$YOUNGEST; i++ )); \
+do svnlook propget -r $i --revprop $REPOS svn:log | xxd -ps -c1 | fgrep '0d' > /dev/null \
+&& echo "Fixing r$i" && svnadmin setlog $REPOS --bypass-hooks -r$i \
+<( svnlook log -r$i $REPOS | sed '$d' ); done; echo "Verified until revision $YOUNGEST"
+
+(the "sed '$d'" strips off the extra newline that's added by "svnlook log")
+How do I allow clients to authenticate against a Windows domain controller using SSPI authentication?
+TortoiseSVN has an excellent document that describes setting up a Subversion server on Windows. Go to https://tortoisesvn.net/docs/release/TortoiseSVN_en/tsvn-serversetup.html#tsvn-serversetup-apache-5, to see the section on SSPI authentication.
+
+An important part of the configuration is the line:
+
+   SSPIOfferBasic On
+Without this line, browsers that support SSPI will prompt for the user's credentials, but clients that do not suppport SSPI such as Subversion will not prompt. (The current release of Neon - Subversion's HTTP library - handles only basic authentication.) Because the client never asks for credentials, any action that requires authentication will fail. Adding this line tells mod_auth_sspi to use basic authentication with the client, but to use the Windows domain controller to authenticate the credentials.
+
+I don't like the ".svn" directory name, and prefer "SVN" or something else. How do I change it?
+We recommend that you live with ".svn" if you possibly can. However, if you are using Visual Studio 2002 or 2003 under Windows, you might need to set the environment variable SVN_ASP_DOT_NET_HACK, as described here.
+
+Or you could use a completely custom name for the administrative directory. We recommend against this, because your working copy would probably not work with Subversion clients other than the one you customized. However, if you absolutely must do this, just change this line in subversion/include/svn_wc.h from
+
+#define SVN_WC_ADM_DIR_NAME   ".svn"
+to (for example)
+
+#define SVN_WC_ADM_DIR_NAME   "SVN"
+then recompile your client.
+
+How do I change the case of a filename?
+This problem comes up in two situations. If you're adding files on an operating system with a case-insensitive filesystem, such as Windows, you might find you accidentally add a file with the wrong case in the filename. Alternatively, you may just decide to change the case of an existing file in the repository.
+
+If you're working in a case-sensitive file system, this is no problem at all. Just move the file to the new name, e.g.,
+
+svn mv file.java File.java
+From Subversion 1.7 onwards, this also works on Windows, even though it's using a case-insensitive filesystem.
+
+If you are using Subversion 1.6 or older on Windows, or if you're using a case-insensitive filesystem with an operating system other than Windows, this technique won't work. In this case, you can accomplish this by copying the file somewhere temporary, deleting the file from Subversion, then adding the copy with the correct case. Or a better way is to perform a move operation with Subversion URLs. Using URLs is recommended, because it will preserve history for the file, and will take effect immediately.
+
+Both ways will leave Windows working copies with problems, however, because Windows can still get confused when trying to update the conflicting filenames. (You'll get a message like svn: Failed to add file 'File.java': object of the same name already exists). One way of fixing the problem is to delete your working copy and check out again. If you do not want to do this, you must perform a two step update.
+
+For each file with the wrong case, the following command will change the case:
+
+svn mv svn://svnserver/path/to/file.java svn://svnserver/path/to/File.java
+To update the working copy, change to the relevant directory and do:
+
+svn update file.java
+svn update
+The first update will remove file.java from your working copy, the second update will add File.java, leaving you with a correct working copy. Or if you had a lot of problematic files, you can update the working copy this way:
+
+svn update *
+svn update
+As you can see, adding a file with the wrong case is tricky to fix on an operating system that has a case insensitive filesystem. Do try to get it right when you add the file the first time! To prevent the problem from occurring in the first place, you can create a pre-commit hook that calls the file check-case-insensitive.pl. That file lives in the Subversion source tarball, in the directory contrib/hook-scripts.
+
+I can't use tags to merge changes from a branch into the trunk like I used to with CVS, can I?
+As shown below it is possible to merge from a branch to the trunk without remembering one revision number. Or vice versa (not shown in the example).
+
+The example below presumes an existing repository in /home/repos in which you want to start a branch named bar containing a file named foo you are going to edit.
+
+For the purpose of tracing branch merges, this repository has set up tags/branch_traces/ to keep tags.
+
+# setup branch and tags
+$ svn copy file:///home/repos/trunk \
+           file:///home/repos/branches/bar_branch \
+           -m "start of bar branch"
+$ svn copy file:///home/repos/branches/bar_branch \
+           file:///home/repos/tags/branch_traces/bar_last_merge \
+           -m "start"
+
+# checkout branch working copy
+$ svn checkout file:///home/repos/branches/bar_branch wc
+$ cd wc
+
+# edit foo.txt file and commit
+$ echo "some text" >>foo.txt
+$ svn commit -m "edited foo"
+
+# switch to trunk and merge changes from branch
+$ svn switch file:///home/repos/trunk
+$ svn merge file:///home/repos/tags/branch_traces/bar_last_merge \
+            file:///home/repos/branches/bar_branch
+
+# Now check the file content of 'foo.txt', it should contain the changes.
+
+# commit the merge
+$ svn commit -m "Merge change X from bar_branch."
+
+# finally, update the trace branch to reflect the new state of things
+$ svn delete -m "Remove old trace branch in preparation for refresh." \
+             file:///home/repos/tags/branch_traces/bar_last_merge
+$ svn copy file:///home/repos/branches/bar_branch                     \
+           file:///home/repos/tags/branch_traces/bar_last_merge       \
+           -m "Reflect merge of change X."
+Why doesn't the $Revision$ keyword do what I want? It expands to the file's last-changed revision, but I want something that will expand to the file's current revision.
+Subversion increments the revision number of the repository as a whole, so it can't expand any keyword to be that number - it would have to search and possibly modify every file in your working copy on every update and commit.
+
+The information you want (the revision of your working copy) is available from the command svnversion; it gives you information on the revision level of a working copy given a path (see svnversion --help for details).
+
+You can incorporate it into your build or release process to get the information you need into the source itself. For example, in a build environment based on GNU make, add something like this to your Makefile:
+
+##
+## To use this, in yourfile.c do something like this:
+## printf("this program was compiled from SVN revision %s\n",SVN_REV);
+##
+
+SVNDEF := -D'SVN_REV="$(shell svnversion -n .)"'
+CFLAGS := $(SVNDEF) ... continue with your other flags ...
+(Note that this will not work on non-GNU versions of make. Don't use it if your build process needs to be portable.)
+
+Or try this recipe:
+
+##
+## on every build, record the working copy revision string
+##
+svn_version.c: FORCE
+    echo -n 'const char* svn_version(void) { const char* SVN_Version = "' \
+                                       > svn_version.c
+    svnversion -n .                   >> svn_version.c
+    echo '"; return SVN_Version; }'   >> svn_version.c
+
+##
+## Then any executable that links in svn_version.o will be able
+## to call the function svn_version() to get a string that
+## describes exactly what revision was built.
+##
+Windows users may want to use SubWCRev.exe, available from the TortoiseSVN download page; it replaces all $WCREV$ tags in a given file with the current working copy revision.
+
+Another alternative is creating a wrapper for 'svn commit', which does some automatic replacement in files before commit (be careful not to mess things up though -- silent manipulation of files right before commit can be scary for a user). That way you can inject any metadata you want (and it will be committed with the regular content of the file into the repository).
+
+Does Subversion have a keyword which behaves like $Log$ in CVS?
+No. There is no equivalent for the $Log$ keyword in CVS. If you want to retrieve a log for a specific file, you can run 'svn log your-file-name' or 'svn log url-to-your-file'. From the mailing list some explanations why $Log$ is bad:
+
+"$Log$ is a total horror the moment you start merging changes
+between branches. You're practically guaranteed to get conflicts there,
+which -- because of the nature of this keyword -- simply cannot be
+resolved automatically."
+And:
+
+Subversion log messages are mutable, they can be changed by setting
+the svn:log revision property. So the expansion of $Log:$ in any
+given file could be out of date. Update may well need to retrieve the
+appropriate log message for each occurrence of the $Log:$ keyword,
+even if the file that contained it was not otherwise updated.
+I don't care about that. I want to use it anyway. Will you implement it?
+
+No. There are no plans to implement it ourselves or accept patches which implement this feature. If you want to distribute your files with some kind of changelog included, you might be able to work around this limitation in your build system.
+
+I have a file in my project that every developer must change, but I don't want those local mods to ever be committed. How can I make 'svn commit' ignore the file?
+The answer is: don't put that file under version control. Instead, put a template of the file under version control, something like "file.tmpl".
+
+Then, after the initial 'svn checkout', have your users (or your build system) do a normal OS copy of the template to the proper filename, and have users customize the copy. The file is unversioned, so it will never be committed. And if you wish, you can add the file to its parent directory's svn:ignore property, so it doesn't show up as '?' in the 'svn status' command.
+
+When I access a repository using svn+ssh, my password is not cached in ~/.subversion/auth/. How do I avoid having to type it so often?
+ssh has its own passphrases and its own authentication-caching scheme. Its auth caching is external to Subversion, and must be set up independently of Subversion.
+
+OpenSSH includes ssh-keygen to create the keys, ssh-agent to cache passphrases, and ssh-add to add passphrases to the agent's cache. A popular script to simplify usage of ssh-agent is keychain. On Windows, PuTTY is a popular alternative ssh client; see PuTTYgen to import OpenSSH keys and pageant to cache passphrases.
+
+Setting up ssh-agent is outside the scope of this document, but a Google search for "ssh-agent" will quickly get you answers. Or if you're really impatient, try this one:
+
+   http://mah.everybody.org/docs/ssh
+My svnserve binary is in a directory that isn't on my users' default PATHs, they use svn+ssh, and I can't figure out how to modify their PATH so that they can run svnserve.
+Note: this all assumes you're using OpenSSH. There are other ssh implementations out there, and presumably they will allow you to do something similar, but we don't yet know the details.
+
+You've tried fiddling with their various login files, like .bash_profile, and nothing works! That's because ssh ignores those files when the Subversion client invokes it. But there's no need to modify PATH; instead, you can directly give ssh the full name of the svnserve command. Here's how to do it:
+
+For each user who needs svn+ssh access, generate a new ssh public-key pair which they will use only for Subversion—not for logging in normally. Have them give the keypair a distinctive name, like ~/.ssh/id_dsa.subversion. Add the public part of the key to their ~/.ssh/authorized_keys file on the server machine, after first inserting a bit of magic at the beginning of the line before the word ssh-rsa or ssh-dss, like this:
+
+before
+ssh-dss AAAAB3Nblahblahblahblah
+after
+command="/opt/subversion/bin/svnserve -t" ssh-dss AAAAB3Nblahblahblahblah
+Obviously, replace /opt/subversion/bin/svnserve with whatever is appropriate for your system. You also might want to specify the full path to the Subversion repository in the command (by using the -r option), to save your users some typing.
+
+The command= magic causes sshd on the remote machine to invoke svnserve, even if your user tries to run some other command. See the sshd(8) man page (section AUTHORIZED_KEYS FILE FORMAT) for details.
+
+Now when your users run the Subversion client, make sure they have an SVN_SSH environment variable that "points to" the private half of their keypair, by doing something like this (for the Bourne Again shell):
+
+SVN_SSH="ssh -i $HOME/.ssh/id_dsa.subversion"
+export SVN_SSH
+This file discusses this topic in more detail.
+
+I want to allow access via svn+ssh://, but am paranoid. I hate the idea of giving each user a login; I would then have to worry about what they are, and are not, allowed to access on my machine.
+See the section about hacking the ~/.ssh/authorized_keys file in the answer to this other question; ignore the stuff about getting svnserve on your PATH.
+
+How can I set certain properties on everything in the repository? Also, how can I make sure that every new file coming into the repository has these properties?
+Subversion will not change a file's contents by default; you have to deliberately set the svn:eol-style or svn:keywords property on a file for that to happen. That makes Subversion a lot safer than CVS's default behavior, but with that safety comes some inconvenience.
+
+Answering the first question: to set properties on all files already in the repository, you'll need to do it the hard way. All you can do is run svn propset on every file (in a working copy), and then svn commit. Scripting can probably help you with this.
+
+But what about future files? Unfortunately, there's no server mechanism to automatically set properties on files being committed. This means that all of your users need to remember to set certain properties whenever they svn add a file. Fortunately, there's a client-side tool to help with this. Read about the auto-props feature in the book. You need to make sure all your users configure their clients' auto-props settings appropriately.
+
+You could write a pre-commit hook script to reject any commit which forgets to add properties to new files (see https://svn.apache.org/repos/asf/subversion/trunk/contrib/hook-scripts/check-mime-type.pl for example). However, this approach may be overkill. If somebody forgets to set svn:eol-style, for example, it will be noticed the minute somebody else opens the file on a different OS. Once noticed, it's easy to fix: just set the property and commit.
+
+Note: many users have asked for a feature whereby the server automatically "broadcasts" run-time settings to clients, such as auto-props settings. There's already a feature request filed for this (issue 1974), though this feature is still being debated by developers, and isn't being worked on yet.
+
+How do I deal with spaces in the editor path?  Also, how can I define command line options for the editor?
+The Subversion command line client will invoke the editor defined in the environment variable SVN_EDITOR.  This environment variable is passed directly to the operating system along with the name of a temporary file used to enter/edit the log message.
+
+Due to the fact that the SVN_EDITOR string is passed as-is to the system's command shell, spaces in the editor name, or in the path name to the editor, will not work unless the editor name is in quotes.
+
+For example, on Windows if your editor is in C:\Program Files\Posix Tools\bin\vi you would want to set the variable as follows:
+
+   set SVN_EDITOR="C:\Program Files\Posix Tools\bin\vi"
+Note that there is no need to escape the quotes in the Windows shell as they are not part of the syntax for the set command.
+
+On UNIX systems you would need to follow your shell's specific methods for setting the variable.  For example, in a bash shell, the following should work:
+
+   SVN_EDITOR='"/usr/local/more editors/bin/xemacs"'
+   export SVN_EDITOR
+In case a command line option would be needed for the invocation of the editor, just add that after the editor name in the SVN_EDITOR environment variable just like you would us on the command line.  For example, if the options -nx -r would be wanted for the above editors, the following will provide those options:
+
+For Windows:
+
+   set SVN_EDITOR="C:\Program Files\Posix Tools\bin\vi" -nx -r
+For UNIX/bash:
+
+   SVN_EDITOR='"/usr/local/more editors/bin/xemacs" -nx -r'
+   export SVN_EDITOR
+Note that SVN_EDITOR is the Subversion specific environment variable setting for the editor selection.  Subversion also supports using the more generic EDITOR variable but if you need special behaviors with Subversion it is best to use the SVN_EDITOR variable.
+
+I'm managing a website in my repository. How can I make the live site automatically update after every commit?
+This is done all the time, and is easily accomplished by adding a post-commit hook script to your repository. Read about hook scripts in Chapter 5 of the book. The basic idea is to make the "live site" just an ordinary working copy, and then have your post-commit hook script run 'svn update' on it.
+
+In practice, there are a couple of things to watch out for. The server program performing the commit (svnserve or apache) is the same program that will be running the post-commit hook script. That means that this program must have proper permissions to update the working copy. In other words, the working copy must be owned by the same user that svnserve or apache runs as -- or at least the working copy must have appropriate permissions set.
+
+If the server needs to update a working copy that it doesn't own (for example, user joe's ~/public_html/ area), one technique is create a +s binary program to run the update, since Unix won't allow scripts to run +s. Compile a tiny C program:
+
+#include <stddef.h>
+#include <stdlib.h>
+#include <unistd.h>
+int main(void)
+{
+  execl("/usr/local/bin/svn", "svn", "update", "/home/joe/public_html/",
+        (const char *) NULL);
+  return(EXIT_FAILURE);
+}
+... and then chmod +s the binary, and make sure it's owned by user 'joe'. Then in the post-commit hook, add a line to run the binary.
+
+If you have problems getting the hook to work, see "Why aren't my repository hooks working?".
+
+Also, you'll probably want to prevent apache from exporting the .svn/ directories in the live working copy. Add this to your httpd.conf:
+
+# Disallow browsing of Subversion working copy administrative dirs.
+<DirectoryMatch "^/.*/\.svn/">
+    Order deny,allow
+    Deny from all
+</DirectoryMatch>
+Finally, if the working copy to be updated isn't on the same machine as the Subversion server, svnpubsub can be used on the Subversion server to advertise the commit to a listening svnwcsub client on the Web server.
+
+How do I check out a single file?
+Subversion does not support checkout of a single file, it only supports checkout of directory structures.
+
+However, you can use 'svn export' to export a single file. This will retrieve the file's contents, it just won't create a versioned working copy.
+
+How do I detect adds, deletes, copies and renames in a working copy after they've already happened?
+You don't. It's a bad idea to try.
+
+The basic design of the working copy has two rules: (1) edit files as you please, and (2) use a Subversion client to make any tree-changes (add, delete, move, copy). If these rules are followed, the client can sucessfully manage the working copy. If renames or other rearrangements happen outside of Subversion, then the UI has been violated and the working copy might be broken. The client cannot guess what happened.
+
+People sometimes run into this problem because they want to make version control "transparent". They trick users into using a working copy, then have a script run later that tries to guess what happened and run appropriate client commands. Unfortunately, this technique only goes a short distance. 'svn status' will show missing items and unversioned items, which the script can then automatically 'svn rm' or 'svn add'. But if a move or copy has happened, you're out of luck. Even if the script has a foolproof way of detecting these things, 'svn mv' and 'svn cp' can't operate after the action has already occurred.
+
+In summary: a working copy is wholly under Subversion's control, and Subversion wasn't designed to be transparent. If you're looking for transparency, try setting up an apache server and using the "SVNAutoversioning" feature described in appendix C of the book. This will allow users to mount the repository as a network disk, and any changes made to the volume cause automatic commits on the server
