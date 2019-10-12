@@ -1,4 +1,4 @@
-def readFile(source, mode):
+def read_file(source, mode):
     file = open(source, mode)
     content = file.read()
     file.close()
@@ -6,7 +6,7 @@ def readFile(source, mode):
 
 
 def main():
-    print(readFile("./resources/titanic.txt", "r"))
+    print(read_file("./resources/titanic.txt", "r"))
 
 
 if __name__ == '__main__':
