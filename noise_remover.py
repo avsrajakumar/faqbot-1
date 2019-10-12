@@ -5,12 +5,6 @@ from nltk.corpus import stopwords
 from file_reader import read_file
 
 
-def main():
-    content = read_file("./resources/titanic.txt", "r")
-    perf_noise_cancelling(content)
-
-
-# tokenize
 def perf_noise_cancelling(content):
     words = nltk.word_tokenize(content)
     without_stopwords = []
@@ -22,6 +16,12 @@ def perf_noise_cancelling(content):
 
     # display
     print("Without stop words: ", without_stopwords)
+
+
+# tokenize
+def main():
+    content = read_file("./resources/titanic.txt", "r")
+    perf_noise_cancelling(content)
 
 
 if __name__ == '__main__':
