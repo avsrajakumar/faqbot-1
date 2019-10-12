@@ -14,7 +14,7 @@ without_stopwords = []
 
 # filter
 for word in words:
-    if word not in stopwords.words('english'):
+    if word not in stopwords.words('english') and word.isalpha():
         without_stopwords.append(word)
 
 # display
