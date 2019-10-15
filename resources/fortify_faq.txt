@@ -1,0 +1,11 @@
+Fortify release scan fails in my Jenkins pipeline. How to fix?
+Need to renew the fortify token associated with my cipaas.
+Jenkins is unable to access Fortify scanner
+When trying to connect to Fortify scanner, access is denied.
+Need to configure Sonar and Fortify scanners in my application release
+Need new Fortify token for my cipaas
+How can I access Fortify page
+How to setup Fortify scan in my cipaas pipeline
+My Fortify scan is getting failed. Can you help?
+Reset password for Fortify scanner in my cipaas
+Fortify issue is not closed in QC after fix and scan
