@@ -205,4 +205,58 @@ what is Test Lab module in Quality Center
 what is Sprinter in HP-Alm
 how one can map a single defect to more than one test script
 what is ALM workflow
-
+What is a nexus repository?
+Is Nexus repository free?
+How do I download from Nexus repository?
+What is Nexus tool?
+What is the purpose of Nexus?
+How do I create a nexus repository?
+Is Nexus repository open source?
+What is Nexus lifecycle?
+What is Nexus tool in Devops?
+What is a artifact repository?
+What is Nexus platform?
+What is the difference between Nexus and Artifactory?
+How do I use Nexus repository?
+How do I create a nexus repository?
+In which default port number does Nexus run?
+How do I download from Nexus repository?
+How do I add a jar to my Nexus repository?
+What is Nexus proxy?
+How do I change nexus port?
+What is hosted repository in Nexus?
+What is raw repository in Nexus?
+What are fortify issues?
+What is fortify scan?
+What is Fortify software used for?
+What is fortify tool?
+What is a fortify FPR file?
+What does the Fortify on Demand dashboard allows customers to do?
+Is fortify free?
+How is incremental scanning done?
+Does fortify scan Javascript?
+What does WebInspect scan for?
+What is Fortify on Demand?
+What is the synonym of Fortify?
+What is Micro Focus fortify?
+Who makes Fortify?
+Is fortify open source?
+What is Fortify software used for?
+How is incremental scanning done?
+What are fortify issues?
+What is fortify scan?
+What is Fortify software used for?
+What is fortify tool?
+What is a fortify FPR file?
+What does the Fortify on Demand dashboard allows customers to do?
+Is fortify free?
+How is incremental scanning done?
+Does fortify scan Javascript?
+What does WebInspect scan for?
+What is Fortify on Demand?
+What is the synonym of Fortify?
+What is Micro Focus fortify?
+Who makes Fortify?
+Is fortify open source?
+What is Fortify software used for?
+How is incremental scanning done?
