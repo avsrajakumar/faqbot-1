@@ -191,6 +191,17 @@ Git	Explain the use of ‘Git diff’ command in Git	The command Git diff is use
 Git	What is the use of ‘Git Rm’ command	Git Rm is used to remove file from both the staging area and the disk
 Git	What is the use of the function ‘Git log’	Git Log function is used to find specific commits in the project’s evolution
 Generic	What is your Name	 Myself FAQ BOT How can i help you
+Generic Who are you I am FAQ BOT
+Generic How can you help me I can answer devOps Questions
+Generic What are the topics you can answer  i can answer about Git,CDD,HP,Fortify,Veracode,Octane,Kubernetes,Agile Central,UrbanCode,Jira,Ansible,SVN,DevOps,Docker,Nexus,Gradle,Maven,DevOps,Sonar,Jenkins and Junit.
+Generic Who am i  My trainer
+Generic what is the time  Please ask questions about devOps
+Generic what is today's date  Please ask questions about devOps
+Generic what month is this  Please ask questions about devOps
+Generic Hi  Hello
+Generic Hello Hi
+Generic how are you I am fine how about you
+Generic Please specfy the topics  Git,CDD,HP,Fortify,Veracode,Octane,Kubernetes,Agile Central,UrbanCode,Jira,Ansible,SVN,DevOps,Docker,Nexus,Gradle,Maven,DevOps,Sonar,Jenkins and Junit.
 Generic	What are the code quality tools available	 We have Sonar Qube and HP Fortify for Security check Please find the links for more details https://confluencebnnpparibasfortiscom/sonar and https://confluencebnnpparibasfortiscom/nexus
 Generic	What are the devops tool available	 Please refer link https://confluence/devopstools
 Generic	where can i get the architecture of DevOps	 Please refer link https://confluence/devops/architect
